@@ -4,14 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Briscola a 5 - Tracker</title>
-    <!-- Tailwind CSS -->
-    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
-    <!-- React & Babel -->
-    <script src="[https://unpkg.com/react@18/umd/react.production.min.js](https://unpkg.com/react@18/umd/react.production.min.js)"></script>
-    <script src="[https://unpkg.com/react-dom@18/umd/react-dom.production.min.js](https://unpkg.com/react-dom@18/umd/react-dom.production.min.js)"></script>
-    <script src="[https://unpkg.com/@babel/standalone/babel.min.js](https://unpkg.com/@babel/standalone/babel.min.js)"></script>
-    <!-- Icons -->
-    <script src="[https://unpkg.com/lucide@latest](https://unpkg.com/lucide@latest)"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         /* Forza modalità giorno assoluta */
         :root { color-scheme: light !important; }
@@ -23,13 +20,8 @@
             overflow-x: hidden;
             -webkit-tap-highlight-color: transparent;
         }
-        body { 
-            font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-        }
-        .card-white { 
-            background-color: #ffffff !important; 
-            color: #0f172a !important; 
-        }
+        body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
+        .card-white { background-color: #ffffff !important; color: #0f172a !important; }
         .active-tap:active { transform: scale(0.95); transition: transform 0.1s; }
     </style>
 </head>
@@ -37,9 +29,9 @@
     <div id="root"></div>
 
     <script type="module">
-        import { initializeApp } from "[https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js](https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js)";
-        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "[https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js](https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js)";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "[https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js](https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js)";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCZcKB7Ey13VBtlsqtSGQe-g6IeFoRl9CQ",
@@ -189,7 +181,7 @@
                                 <button onClick={() => setView('home')} className="p-2 bg-white rounded-xl border"><Icon name="arrow-left" /></button>
                                 <h1 className="text-2xl font-black">Nuova Partita</h1>
                             </div>
-                            <input className="w-full p-5 bg-white border border-slate-200 rounded-3xl outline-none" placeholder="Nome tavolo..." value={newTableName} onChange={e => setNewTableName(e.target.value)} />
+                            <input className="w-full p-5 bg-white border border-slate-200 rounded-3xl outline-none shadow-sm" placeholder="Nome tavolo..." value={newTableName} onChange={e => setNewTableName(e.target.value)} />
                             <div className="grid grid-cols-2 gap-2">
                                 {players.map(p => {
                                     const isS = selectedPlayers.find(x => x.id === p.id);
@@ -201,7 +193,7 @@
                                     );
                                 })}
                             </div>
-                            <button disabled={selectedPlayers.length !== 5 || !newTableName} onClick={createTable} className="w-full bg-emerald-500 text-white py-5 rounded-[2rem] font-black text-xl active-tap disabled:opacity-20">INIZIA</button>
+                            <button disabled={selectedPlayers.length !== 5 || !newTableName} onClick={createTable} className="w-full bg-emerald-500 text-white py-5 rounded-[2rem] font-black text-xl active-tap disabled:opacity-20 mt-4">INIZIA</button>
                         </div>
                     )}
 
