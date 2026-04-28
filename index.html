@@ -13,20 +13,24 @@
     <!-- Icons -->
     <script src="[https://unpkg.com/lucide@latest](https://unpkg.com/lucide@latest)"></script>
     <style>
-        /* Forza modalità giorno */
-        :root { color-scheme: light; }
-        body { 
-            -webkit-tap-highlight-color: transparent; 
-            outline: none; 
+        /* Forza modalità giorno assoluta */
+        :root { color-scheme: light !important; }
+        html, body { 
             background-color: #f8fafc !important; 
             color: #0f172a !important; 
-            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0; 
+            padding: 0; 
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body { 
+            font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+        }
+        .card-white { 
+            background-color: #ffffff !important; 
+            color: #0f172a !important; 
         }
         .active-tap:active { transform: scale(0.95); transition: transform 0.1s; }
-        /* Rimuove scroll orizzontale */
-        html, body { overflow-x: hidden; margin: 0; padding: 0; }
-        /* Assicura che le card siano sempre bianche */
-        .card-white { background-color: #ffffff !important; color: #0f172a !important; }
     </style>
 </head>
 <body>
@@ -121,7 +125,7 @@
             };
 
             return (
-                <div className="max-w-md mx-auto min-h-screen pb-32 p-6 font-sans bg-slate-50">
+                <div className="max-w-md mx-auto min-h-screen pb-32 p-6 bg-slate-50">
                     {!isConnected && (
                         <div className="fixed top-0 left-0 right-0 bg-red-500 text-white text-[10px] font-bold py-1 text-center z-[100] animate-pulse uppercase tracking-widest">
                             Connessione in corso...
@@ -150,7 +154,7 @@
                                         </div>
                                     </div>
                                 ))}
-                                {tables.length === 0 && isConnected && <p className="text-center text-slate-400 py-20 italic">Nessun tavolo attivo. Creane uno!</p>}
+                                {tables.length === 0 && isConnected && <p className="text-center text-slate-400 py-20 italic">Nessun tavolo attivo.</p>}
                             </div>
                         </div>
                     )}
@@ -169,7 +173,7 @@
                                             <span className="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-full font-black text-xs">{i+1}</span>
                                             <div>
                                                 <p className="font-bold">{p.name}</p>
-                                                <p className="text-[10px] text-indigo-500 font-black uppercase">Vittorie totali: {calculateWins(p.id)}</p>
+                                                <p className="text-[10px] text-indigo-500 font-black uppercase">Vittorie: {calculateWins(p.id)}</p>
                                             </div>
                                         </div>
                                         <button onClick={() => window.fb.deleteDoc(window.fb.doc(window.db, ...baseP, 'players', p.id))} className="text-red-300 p-2 active-tap"><Icon name="trash-2" size={18}/></button>
@@ -183,9 +187,9 @@
                         <div className="space-y-6">
                             <div className="flex items-center gap-4">
                                 <button onClick={() => setView('home')} className="p-2 bg-white rounded-xl border"><Icon name="arrow-left" /></button>
-                                <h1 className="text-2xl font-black">Nuova Sessione</h1>
+                                <h1 className="text-2xl font-black">Nuova Partita</h1>
                             </div>
-                            <input className="w-full p-5 bg-white border border-slate-200 rounded-3xl outline-none shadow-sm" placeholder="Nome del tavolo..." value={newTableName} onChange={e => setNewTableName(e.target.value)} />
+                            <input className="w-full p-5 bg-white border border-slate-200 rounded-3xl outline-none" placeholder="Nome tavolo..." value={newTableName} onChange={e => setNewTableName(e.target.value)} />
                             <div className="grid grid-cols-2 gap-2">
                                 {players.map(p => {
                                     const isS = selectedPlayers.find(x => x.id === p.id);
@@ -197,14 +201,14 @@
                                     );
                                 })}
                             </div>
-                            <button disabled={selectedPlayers.length !== 5 || !newTableName} onClick={createTable} className="w-full bg-emerald-500 text-white py-5 rounded-[2rem] font-black text-xl shadow-lg active-tap disabled:opacity-20 mt-4">VAI AL TAVOLO</button>
+                            <button disabled={selectedPlayers.length !== 5 || !newTableName} onClick={createTable} className="w-full bg-emerald-500 text-white py-5 rounded-[2rem] font-black text-xl active-tap disabled:opacity-20">INIZIA</button>
                         </div>
                     )}
 
                     {view === 'detail' && activeTableId && (
                         <div className="space-y-6">
                              <div className="flex justify-between items-center">
-                                <button onClick={() => setView('home')} className="p-3 bg-white rounded-2xl border shadow-sm active-tap"><Icon name="arrow-left" /></button>
+                                <button onClick={() => setView('home')} className="p-3 bg-white rounded-2xl border active-tap"><Icon name="arrow-left" /></button>
                                 <h1 className="font-black text-xl">{tables.find(x => x.id === activeTableId)?.name}</h1>
                                 <button onClick={() => { if(confirm("Chiudere il tavolo?")) { window.fb.deleteDoc(window.fb.doc(window.db, ...baseP, 'tables', activeTableId)); setView('home'); }}} className="text-red-400 p-2 active-tap"><Icon name="trash-2" /></button>
                             </div>
@@ -216,9 +220,9 @@
                                             <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Record: {calculateWins(p.id)}</p>
                                         </div>
                                         <div className="flex items-center gap-4 bg-slate-50 p-2 rounded-3xl border border-slate-100">
-                                            <button onClick={() => updateScore(activeTableId, p.id, -1)} className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center font-black shadow-sm text-2xl active-tap" disabled={p.score === 0}>-</button>
+                                            <button onClick={() => updateScore(activeTableId, p.id, -1)} className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center font-black text-2xl active-tap" disabled={p.score === 0}>-</button>
                                             <span className="w-8 text-center text-3xl font-black text-indigo-600">{p.score}</span>
-                                            <button onClick={() => updateScore(activeTableId, p.id, 1)} className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center font-black shadow-lg text-2xl active-tap">+</button>
+                                            <button onClick={() => updateScore(activeTableId, p.id, 1)} className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center font-black text-2xl active-tap">+</button>
                                         </div>
                                     </div>
                                 ))}
@@ -230,14 +234,12 @@
                         <button onClick={() => setView('home')} className={`flex flex-col items-center gap-1 ${view !== 'players' ? 'text-indigo-400' : 'text-slate-500'}`}>
                             <Icon name="grid" size={24} />
                         </button>
-                        <div className="h-6 w-[1px] bg-white/10"></div>
                         <button onClick={() => setView('players')} className={`flex flex-col items-center gap-1 ${view === 'players' ? 'text-indigo-400' : 'text-slate-500'}`}>
                             <Icon name="users" size={24} />
                         </button>
-                        <div className="h-6 w-[1px] bg-white/10"></div>
                         <div className="flex items-center gap-2">
                             <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-red-500 animate-pulse'}`}></div>
-                            <span className="text-[8px] font-black tracking-widest">{isConnected ? "LIVE" : "OFF"}</span>
+                            <span className="text-[8px] font-black">{isConnected ? "LIVE" : "OFF"}</span>
                         </div>
                     </nav>
                 </div>
