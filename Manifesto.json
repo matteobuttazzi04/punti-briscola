@@ -1,0 +1,16 @@
+{
+  "short_name": "Briscola",
+  "name": "Briscola a 5 - Tracker",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "https://matteobuttazzi04.github.io/punti-briscola/",
+  "background_color": "#f8fafc",
+  "theme_color": "#0f172a",
+  "display": "standalone",
+  "orientation": "portrait"
+}
