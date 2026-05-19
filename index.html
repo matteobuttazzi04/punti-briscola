@@ -87,7 +87,8 @@
                 }, () => setIsConnected(false));
 
                 const unsubT = window.fb.onSnapshot(window.fb.collection(window.db, ...baseP, 'tables'), (s) => {
-                    setTables(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => b.ts - a.ts));
+                    // Ordinamento dal più vecchio al più nuovo (ts crescente)
+                    setTables(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.ts - b.ts));
                 });
                 return () => { unsubP(); unsubT(); };
             }, [user]);
@@ -114,6 +115,16 @@
                 setSelectedPlayers([]); setNewTableName(''); setView('home');
             };
 
+            const renameTable = async (tid, currentName) => {
+                const newName = prompt("Modifica il nome del tavolo:", currentName);
+                if (!newName || !newName.trim() || newName.trim() === currentName) return;
+                const t = tables.find(x => x.id === tid);
+                await window.fb.setDoc(window.fb.doc(window.db, ...baseP, 'tables', tid), { 
+                    ...t, 
+                    name: newName.trim() 
+                });
+            };
+
             const updateScore = async (tid, pid, delta) => {
                 const t = tables.find(x => x.id === tid);
                 const player = t.players.find(p => p.id === pid);
@@ -121,11 +132,10 @@
 
                 const newP = t.players.map(p => p.id === pid ? { ...p, score: Math.max(0, p.score + delta) } : p);
                 
-                // Generazione Log Movimento
                 const nowStr = new Date().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
                 const logEntry = `${delta > 0 ? '+' : ''}${delta} (${player.name}) ${nowStr}`;
                 const currentLogs = t.logs || [];
-                const newLogs = [logEntry, ...currentLogs].slice(0, 50); // Mantiene ultimi 50 movimenti
+                const newLogs = [logEntry, ...currentLogs].slice(0, 50);
 
                 await window.fb.setDoc(window.fb.doc(window.db, ...baseP, 'tables', tid), { ...t, players: newP, logs: newLogs });
             };
@@ -146,7 +156,6 @@
 
                 const winners = t.players.filter(p => p.score === maxScore);
 
-                // Assegna punto campionato nell'anagrafica dei nomi
                 for (const w of winners) {
                     const pDoc = players.find(x => x.id === w.id);
                     const currentCPoints = pDoc?.championshipPoints || 0;
@@ -156,7 +165,6 @@
                     });
                 }
 
-                // Resetta tavolo e aggiunge log speciale
                 const resetPlayers = t.players.map(p => ({ ...p, score: 0 }));
                 const nowStr = new Date().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
                 const winnersNames = winners.map(w => w.name).join(', ');
@@ -220,8 +228,8 @@
                                             <div>
                                                 <p className="font-bold text-lg">{p.name}</p>
                                                 <div className="flex flex-col gap-0.5 text-[10px] font-black uppercase tracking-wide">
-                                                    <span class="text-amber-600 flex items-center gap-1">🏆 Campionati vinti: {p.championshipPoints || 0}</span>
-                                                    <span class="text-slate-400">Punti totali nei tavoli: {calculateWins(p.id)}</span>
+                                                    <span className="text-amber-600 flex items-center gap-1">🏆 Campionati vinti: {p.championshipPoints || 0}</span>
+                                                    <span className="text-slate-400">Punti totali nei tavoli: {calculateWins(p.id)}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -261,7 +269,10 @@
                             <div className="space-y-6">
                                  <div className="flex justify-between items-center">
                                     <button onClick={() => setView('home')} className="p-3 bg-white rounded-2xl border active-tap"><Icon name="arrow-left" /></button>
-                                    <h1 className="font-black text-xl">{currentTable.name}</h1>
+                                    <div className="flex items-center gap-2">
+                                        <h1 className="font-black text-xl">{currentTable.name}</h1>
+                                        <button onClick={() => renameTable(activeTableId, currentTable.name)} className="text-indigo-600 p-1 active-tap"><Icon name="edit-2" size={16} /></button>
+                                    </div>
                                     <button onClick={() => { if(confirm("Chiudere il tavolo?")) { window.fb.deleteDoc(window.fb.doc(window.db, ...baseP, 'tables', activeTableId)); setView('home'); }}} className="text-red-400 p-2 active-tap"><Icon name="trash-2" /></button>
                                 </div>
                                 <div className="space-y-3">
@@ -284,7 +295,6 @@
                                     <Icon name="trophy" size={18}/> Termina Campionato
                                 </button>
 
-                                {/* Sezione Cronologia Movimenti */}
                                 <div className="mt-6 pt-4 border-t border-slate-200">
                                     <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1">
                                         <Icon name="history" size={14}/> Cronologia Movimenti
