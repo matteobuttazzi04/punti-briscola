@@ -9,22 +9,6 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-
-    <link rel="icon" type="image/png" href="logo.png">
-
-    <link rel="apple-touch-icon" href="logo.png">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-
-    <link rel="manifest" href="manifest.json">
-
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="Briscola a 5 - Tracker">
-    <meta property="og:description" content="Traccia i punteggi e i campionati delle tue partite a Briscola a 5 in tempo reale.">
-    <meta property="og:image" content="https://matteobuttazzi04.github.io/punti-briscola/logo.png">
-    <meta property="og:url" content="https://matteobuttazzi04.github.io/punti-briscola/">
-
     <style>
         /* Forza modalità giorno assoluta */
         :root { color-scheme: light !important; }
@@ -40,7 +24,7 @@
         .card-white { background-color: #ffffff !important; color: #0f172a !important; }
         .active-tap:active { transform: scale(0.95); transition: transform 0.1s; }
         
-        /* Gestione Splash Screen con doppia sfumatura controllata */
+        /* Schermata di caricamento fissa a tutto schermo */
         #splash-screen {
             position: fixed;
             inset: 0;
@@ -50,12 +34,8 @@
             justify-content: center;
             background-color: #f8fafc;
             z-index: 9999;
-            transition: opacity 0.6s ease-out;
             opacity: 1;
-        }
-        #splash-content {
-            transition: opacity 0.5s ease-out;
-            opacity: 1;
+            transition: opacity 0.6s ease-in-out;
         }
         .pulse-animation {
             animation: customPulse 1.6s infinite ease-in-out;
@@ -67,37 +47,25 @@
     </style>
 </head>
 <body>
+
     <div id="splash-screen">
-        <div id="splash-content" class="flex flex-col items-center justify-center">
-            <div class="pulse-animation flex flex-col items-center justify-center">
-                <img src="logo.png" alt="Logo" class="w-32 h-32 object-contain mb-4 rounded-3xl shadow-md" onerror="this.style.display='none'; document.getElementById('fallback-text').style.display='block';">
-                <div id="fallback-text" class="hidden text-indigo-600 font-black text-6xl mb-4">♦️♣️</div>
-                <div class="text-indigo-600 font-black text-xs uppercase tracking-widest">Caricamento Live...</div>
-            </div>
-        </div>
+        <img src="logo.png" alt="Logo" class="w-32 h-32 object-contain mb-4 rounded-3xl shadow-md pulse-animation" onerror="this.style.display='none'; document.getElementById('fallback-text').style.display='block';">
+        <div id="fallback-text" class="hidden text-indigo-600 font-black text-6xl mb-4 pulse-animation">♦️♣️</div>
+        <div class="text-indigo-600 font-black text-xs uppercase tracking-widest pulse-animation">Caricamento Live...</div>
     </div>
 
     <div id="root"></div>
 
     <script>
-        // Avvia il timer non appena la pagina viene visualizzata
         setTimeout(() => {
-            // 1. Sfuma prima l'immagine e il testo del logo (durata 0.5s)
-            const content = document.getElementById('splash-content');
-            if (content) content.style.opacity = '0';
-            
-            setTimeout(() => {
-                // 2. Dopo che il logo è sparito, sfuma lo sfondo per mostrare il sito pronto sotto (durata 0.6s)
-                const splash = document.getElementById('splash-screen');
-                if (splash) splash.style.opacity = '0';
-                
+            const splash = document.getElementById('splash-screen');
+            if (splash) {
+                splash.style.opacity = '0'; // Avvia la sfumatura a 3.4 secondi
                 setTimeout(() => {
-                    // 3. Rimuove definitivamente l'elemento dal DOM
-                    const splash = document.getElementById('splash-screen');
-                    if (splash) splash.remove();
+                    splash.remove(); // Rimosso definitivamente a 4.0 secondi esatti
                 }, 600);
-            }, 500);
-        }, 4000); // 4000 millisecondi = 4 secondi di base stabili
+            }
+        }, 3400); 
     </script>
 
     <script type="module">
