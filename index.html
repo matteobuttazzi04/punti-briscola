@@ -9,6 +9,22 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+
+    <link rel="icon" type="image/png" href="logo.png">
+
+    <link rel="apple-touch-icon" href="logo.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <link rel="manifest" href="manifest.json">
+
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Briscola a 5 - Tracker">
+    <meta property="og:description" content="Traccia i punteggi e i campionati delle tue partite a Briscola a 5 in tempo reale.">
+    <meta property="og:image" content="https://matteobuttazzi04.github.io/punti-briscola/logo.png">
+    <meta property="og:url" content="https://matteobuttazzi04.github.io/punti-briscola/">
+
     <style>
         /* Forza modalità giorno assoluta */
         :root { color-scheme: light !important; }
@@ -246,7 +262,7 @@
                                 <button onClick={() => setView('home')} className="p-2 bg-white rounded-xl border"><Icon name="arrow-left" /></button>
                                 <h1 className="text-2xl font-black">Nuova Partita</h1>
                             </div>
-                            <input className="w-full p-5 bg-white border border-slate-200 rounded-3xl outline-none" placeholder="Nome tavolo..." value={newTableName} onChange={e => setNewTableName(e.target.value)} />
+                            <input className="w-full p-5 bg-white border border-slate-200 rounded-3xl outline-none shadow-sm" placeholder="Nome tavolo..." value={newTableName} onChange={e => setNewTableName(e.target.value)} />
                             <div className="grid grid-cols-2 gap-2">
                                 {players.map(p => {
                                     const isS = selectedPlayers.find(x => x.id === p.id);
