@@ -96,7 +96,10 @@
 
             const addPlayer = async () => {
                 if (!newPlayerName.trim()) return;
-                await window.fb.setDoc(window.fb.doc(window.db, ...baseP, 'players', Date.now().toString()), { name: newPlayerName.trim() });
+                await window.fb.setDoc(window.fb.doc(window.db, ...baseP, 'players', Date.now().toString()), { 
+                    name: newPlayerName.trim(),
+                    championshipPoints: 0 
+                });
                 setNewPlayerName('');
             };
 
@@ -105,15 +108,66 @@
                 const id = Date.now().toString();
                 await window.fb.setDoc(window.fb.doc(window.db, ...baseP, 'tables', id), {
                     name: newTableName, ts: Date.now(),
-                    players: selectedPlayers.map(p => ({ id: p.id, name: p.name, score: 0 }))
+                    players: selectedPlayers.map(p => ({ id: p.id, name: p.name, score: 0 })),
+                    logs: []
                 });
                 setSelectedPlayers([]); setNewTableName(''); setView('home');
             };
 
             const updateScore = async (tid, pid, delta) => {
                 const t = tables.find(x => x.id === tid);
+                const player = t.players.find(p => p.id === pid);
+                if (delta < 0 && player.score === 0) return;
+
                 const newP = t.players.map(p => p.id === pid ? { ...p, score: Math.max(0, p.score + delta) } : p);
-                await window.fb.setDoc(window.fb.doc(window.db, ...baseP, 'tables', tid), { ...t, players: newP });
+                
+                // Generazione Log Movimento
+                const nowStr = new Date().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                const logEntry = `${delta > 0 ? '+' : ''}${delta} (${player.name}) ${nowStr}`;
+                const currentLogs = t.logs || [];
+                const newLogs = [logEntry, ...currentLogs].slice(0, 50); // Mantiene ultimi 50 movimenti
+
+                await window.fb.setDoc(window.fb.doc(window.db, ...baseP, 'tables', tid), { ...t, players: newP, logs: newLogs });
+            };
+
+            const endChampionship = async (tid) => {
+                const t = tables.find(x => x.id === tid);
+                if (!t) return;
+
+                let maxScore = -1;
+                t.players.forEach(p => { if (p.score > maxScore) maxScore = p.score; });
+
+                if (maxScore <= 0) {
+                    alert("Impossibile terminare: nessun giocatore ha fatto punti in questo campionato!");
+                    return;
+                }
+
+                if (!confirm("Vuoi terminare il campionato attuale? I punteggi odierni verranno azzerati e verrà assegnato +1 Punto Campionato ai vincitori.")) return;
+
+                const winners = t.players.filter(p => p.score === maxScore);
+
+                // Assegna punto campionato nell'anagrafica dei nomi
+                for (const w of winners) {
+                    const pDoc = players.find(x => x.id === w.id);
+                    const currentCPoints = pDoc?.championshipPoints || 0;
+                    await window.fb.setDoc(window.fb.doc(window.db, ...baseP, 'players', w.id), {
+                        ...pDoc,
+                        championshipPoints: currentCPoints + 1
+                    });
+                }
+
+                // Resetta tavolo e aggiunge log speciale
+                const resetPlayers = t.players.map(p => ({ ...p, score: 0 }));
+                const nowStr = new Date().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                const winnersNames = winners.map(w => w.name).join(', ');
+                const endLog = `🏆 Campionato Terminato! Vincitore: ${winnersNames} (${nowStr})`;
+                const newLogs = [endLog, ...(t.logs || [])].slice(0, 50);
+
+                await window.fb.setDoc(window.fb.doc(window.db, ...baseP, 'tables', tid), {
+                    ...t,
+                    players: resetPlayers,
+                    logs: newLogs
+                });
             };
 
             return (
@@ -159,13 +213,16 @@
                                 <button onClick={addPlayer} className="bg-indigo-600 text-white px-5 py-3 rounded-xl font-bold active-tap">OK</button>
                             </div>
                             <div className="space-y-3">
-                                {players.sort((a,b) => calculateWins(b.id) - calculateWins(a.id)).map((p, i) => (
+                                {players.sort((a,b) => (b.championshipPoints || 0) - (a.championshipPoints || 0)).map((p, i) => (
                                     <div key={p.id} className="card-white p-4 rounded-2xl border border-slate-100 flex justify-between items-center shadow-sm">
                                         <div className="flex items-center gap-4">
                                             <span className="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-full font-black text-xs">{i+1}</span>
                                             <div>
-                                                <p className="font-bold">{p.name}</p>
-                                                <p className="text-[10px] text-indigo-500 font-black uppercase">Vittorie: {calculateWins(p.id)}</p>
+                                                <p className="font-bold text-lg">{p.name}</p>
+                                                <div className="flex flex-col gap-0.5 text-[10px] font-black uppercase tracking-wide">
+                                                    <span class="text-amber-600 flex items-center gap-1">🏆 Campionati vinti: {p.championshipPoints || 0}</span>
+                                                    <span class="text-slate-400">Punti totali nei tavoli: {calculateWins(p.id)}</span>
+                                                </div>
                                             </div>
                                         </div>
                                         <button onClick={() => window.fb.deleteDoc(window.fb.doc(window.db, ...baseP, 'players', p.id))} className="text-red-300 p-2 active-tap"><Icon name="trash-2" size={18}/></button>
@@ -181,7 +238,7 @@
                                 <button onClick={() => setView('home')} className="p-2 bg-white rounded-xl border"><Icon name="arrow-left" /></button>
                                 <h1 className="text-2xl font-black">Nuova Partita</h1>
                             </div>
-                            <input className="w-full p-5 bg-white border border-slate-200 rounded-3xl outline-none shadow-sm" placeholder="Nome tavolo..." value={newTableName} onChange={e => setNewTableName(e.target.value)} />
+                            <input className="w-full p-5 bg-white border border-slate-200 rounded-3xl outline-none" placeholder="Nome tavolo..." value={newTableName} onChange={e => setNewTableName(e.target.value)} />
                             <div className="grid grid-cols-2 gap-2">
                                 {players.map(p => {
                                     const isS = selectedPlayers.find(x => x.id === p.id);
@@ -197,30 +254,56 @@
                         </div>
                     )}
 
-                    {view === 'detail' && activeTableId && (
-                        <div className="space-y-6">
-                             <div className="flex justify-between items-center">
-                                <button onClick={() => setView('home')} className="p-3 bg-white rounded-2xl border active-tap"><Icon name="arrow-left" /></button>
-                                <h1 className="font-black text-xl">{tables.find(x => x.id === activeTableId)?.name}</h1>
-                                <button onClick={() => { if(confirm("Chiudere il tavolo?")) { window.fb.deleteDoc(window.fb.doc(window.db, ...baseP, 'tables', activeTableId)); setView('home'); }}} className="text-red-400 p-2 active-tap"><Icon name="trash-2" /></button>
-                            </div>
-                            <div className="space-y-3">
-                                {tables.find(x => x.id === activeTableId)?.players.map(p => (
-                                    <div key={p.id} className="card-white p-5 rounded-[2.5rem] border border-slate-100 flex justify-between items-center shadow-sm">
-                                        <div className="flex-1">
-                                            <p className="font-black text-2xl">{p.name}</p>
-                                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Record: {calculateWins(p.id)}</p>
+                    {view === 'detail' && activeTableId && (() => {
+                        const currentTable = tables.find(x => x.id === activeTableId);
+                        if (!currentTable) return null;
+                        return (
+                            <div className="space-y-6">
+                                 <div className="flex justify-between items-center">
+                                    <button onClick={() => setView('home')} className="p-3 bg-white rounded-2xl border active-tap"><Icon name="arrow-left" /></button>
+                                    <h1 className="font-black text-xl">{currentTable.name}</h1>
+                                    <button onClick={() => { if(confirm("Chiudere il tavolo?")) { window.fb.deleteDoc(window.fb.doc(window.db, ...baseP, 'tables', activeTableId)); setView('home'); }}} className="text-red-400 p-2 active-tap"><Icon name="trash-2" /></button>
+                                </div>
+                                <div className="space-y-3">
+                                    {currentTable.players.map(p => (
+                                        <div key={p.id} className="card-white p-5 rounded-[2.5rem] border border-slate-100 flex justify-between items-center shadow-sm">
+                                            <div className="flex-1">
+                                                <p className="font-black text-2xl">{p.name}</p>
+                                                <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Record Assoluto: {calculateWins(p.id)}</p>
+                                            </div>
+                                            <div className="flex items-center gap-4 bg-slate-50 p-2 rounded-3xl border border-slate-100">
+                                                <button onClick={() => updateScore(activeTableId, p.id, -1)} className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center font-black text-2xl active-tap" disabled={p.score === 0}>-</button>
+                                                <span className="w-8 text-center text-3xl font-black text-indigo-600">{p.score}</span>
+                                                <button onClick={() => updateScore(activeTableId, p.id, 1)} className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center font-black text-2xl active-tap">+</button>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-4 bg-slate-50 p-2 rounded-3xl border border-slate-100">
-                                            <button onClick={() => updateScore(activeTableId, p.id, -1)} className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center font-black text-2xl active-tap" disabled={p.score === 0}>-</button>
-                                            <span className="w-8 text-center text-3xl font-black text-indigo-600">{p.score}</span>
-                                            <button onClick={() => updateScore(activeTableId, p.id, 1)} className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center font-black text-2xl active-tap">+</button>
-                                        </div>
+                                    ))}
+                                </div>
+
+                                <button onClick={() => endChampionship(activeTableId)} className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white py-4 rounded-2xl font-black shadow-lg active-tap flex items-center justify-center gap-2 mt-4 text-sm uppercase tracking-wider">
+                                    <Icon name="trophy" size={18}/> Termina Campionato
+                                </button>
+
+                                {/* Sezione Cronologia Movimenti */}
+                                <div className="mt-6 pt-4 border-t border-slate-200">
+                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1">
+                                        <Icon name="history" size={14}/> Cronologia Movimenti
+                                    </h3>
+                                    <div className="bg-white rounded-2xl border border-slate-200 p-4 max-h-48 overflow-y-auto space-y-2 shadow-inner">
+                                        {currentTable.logs && currentTable.logs.length > 0 ? (
+                                            currentTable.logs.map((log, index) => (
+                                                <div key={index} className={`text-xs font-medium py-1 border-b border-slate-100 last:border-none ${log.startsWith('🏆') ? 'text-amber-600 font-bold bg-amber-50 p-2 rounded-lg' : 'text-slate-600'}`}>
+                                                    {log}
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-xs text-slate-400 italic text-center py-4">Nessun movimento registrato.</p>
+                                        )}
                                     </div>
-                                ))}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        );
+                    })()}
 
                     <nav className="fixed bottom-6 left-6 right-6 bg-slate-900 text-white rounded-[2.5rem] px-10 py-5 flex justify-between items-center z-50 shadow-2xl">
                         <button onClick={() => setView('home')} className={`flex flex-col items-center gap-1 ${view !== 'players' ? 'text-indigo-400' : 'text-slate-500'}`}>
