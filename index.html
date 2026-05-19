@@ -319,7 +319,6 @@
                                         <div key={p.id} className="card-white p-5 rounded-[2.5rem] border border-slate-100 flex justify-between items-center shadow-sm">
                                             <div className="flex-1">
                                                 <p className="font-black text-2xl">{p.name}</p>
-                                                <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Record Assoluto: {calculateWins(p.id)}</p>
                                             </div>
                                             <div className="flex items-center gap-4 bg-slate-50 p-2 rounded-3xl border border-slate-100">
                                                 <button onClick={() => updateScore(activeTableId, p.id, -1)} className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center font-black text-2xl active-tap" disabled={p.score === 0}>-</button>
