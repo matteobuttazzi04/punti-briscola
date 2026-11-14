@@ -4,24 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Briscola a 5 - Tracker</title>
+    <!-- Librerie esterne -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
 
+    <!-- Icone e PWA -->
     <link rel="icon" type="image/png" href="logo.png">
-
     <link rel="apple-touch-icon" href="logo.png">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-
     <link rel="manifest" href="manifest.json">
 
+    <!-- Anteprima Open Graph -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="Briscola a 5 - Tracker">
-    <meta property="og:description" content="Traccia i punteggi e i campionati delle tue partite a Briscola a 5 in tempo reale.">
+    <meta property="og:description" content="Traccia i punteggi, le mani e le statistiche delle tue partite a Briscola a 5 in tempo reale.">
     <meta property="og:image" content="https://matteobuttazzi04.github.io/punti-briscola/logo.png?v=2">
     <meta property="og:image:secure_url" content="https://matteobuttazzi04.github.io/punti-briscola/logo.png?v=2">
     <meta property="og:image:type" content="image/png">
@@ -30,7 +30,6 @@
     <meta property="og:url" content="https://matteobuttazzi04.github.io/punti-briscola/">
 
     <style>
-        /* Forza modalità giorno assoluta */
         :root { color-scheme: light !important; }
         html, body { 
             background-color: #f8fafc !important; 
@@ -40,11 +39,11 @@
             overflow-x: hidden;
             -webkit-tap-highlight-color: transparent;
         }
-        body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
+        body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         .card-white { background-color: #ffffff !important; color: #0f172a !important; }
-        .active-tap:active { transform: scale(0.95); transition: transform 0.1s; }
+        .active-tap:active { transform: scale(0.96); transition: transform 0.1s; }
         
-        /* Schermata di caricamento fissa a tutto schermo */
+        /* Splash Screen */
         #splash-screen {
             position: fixed;
             inset: 0;
@@ -61,29 +60,39 @@
             animation: customPulse 1.6s infinite ease-in-out;
         }
         @keyframes customPulse {
-            0%, 100% { opacity: 0.6; transform: scale(0.96); }
+            0%, 100% { opacity: 0.65; transform: scale(0.96); }
             50% { opacity: 1; transform: scale(1.04); }
+        }
+
+        /* Glow quadratino LIVE */
+        @keyframes liveGlow {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.65); }
+            50% { opacity: 0.45; box-shadow: 0 0 10px 4px rgba(16, 185, 129, 0.25); }
+        }
+        .live-square {
+            animation: liveGlow 1.8s infinite ease-in-out;
         }
     </style>
 </head>
 <body>
 
+    <!-- Splash Screen -->
     <div id="splash-screen">
         <img src="logo.png" alt="Logo" class="w-32 h-32 object-contain mb-4 rounded-3xl shadow-md pulse-animation" onerror="this.style.display='none'; document.getElementById('fallback-text').style.display='block';">
         <div id="fallback-text" class="hidden text-indigo-600 font-black text-6xl mb-4 pulse-animation">♦️♣️</div>
         <div class="text-indigo-600 font-black text-xs uppercase tracking-widest pulse-animation">Caricamento Live...</div>
     </div>
 
+    <!-- App React -->
     <div id="root"></div>
 
+    <!-- Timer 4.0s totali -->
     <script>
         setTimeout(() => {
             const splash = document.getElementById('splash-screen');
             if (splash) {
-                splash.style.opacity = '0'; // Avvia la sfumatura a 3.4 secondi
-                setTimeout(() => {
-                    splash.remove(); // Rimosso definitivamente a 4.0 secondi esatti
-                }, 600);
+                splash.style.opacity = '0';
+                setTimeout(() => { splash.remove(); }, 600);
             }
         }, 3400); 
     </script>
@@ -110,17 +119,91 @@
     </script>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
 
+        // Icone SVG native per massima velocità e zero glitch React
         const Icon = ({ name, size = 20, className = "" }) => {
-            useEffect(() => { 
-                if (window.lucide) window.lucide.createIcons(); 
-            }, [name]);
-            return <i data-lucide={name} className={className} style={{ width: size, height: size }}></i>;
+            const paths = {
+                'plus': <><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>,
+                'users': <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>,
+                'chevron-right': <polyline points="9 18 15 12 9 6"/>,
+                'arrow-left': <><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></>,
+                'edit-2': <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>,
+                'trash-2': <><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></>,
+                'undo-2': <><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></>,
+                'check': <polyline points="20 6 9 17 4 12"/>,
+                'bar-chart-2': <><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></>,
+                'trophy': <><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></>,
+                'history': <><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></>,
+                'flame': <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>,
+                'shield': <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>,
+                'swords': <><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" y1="19" x2="19" y2="13"/><line x1="16" y1="16" x2="20" y2="20"/><line x1="19" y1="21" x2="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" y1="14" x2="9" y2="18"/><line x1="7" y1="17" x2="4" y2="20"/><line x1="3" y1="19" x2="5" y2="21"/></>,
+                'heart': <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>,
+                'alert-triangle': <><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>
+            };
+            return (
+                <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    {paths[name] || null}
+                </svg>
+            );
         };
 
+        // Dati storici ricostruiti dalle 48 registrazioni del tavolo "Briscul" (1777295414285)
+        const LEGACY_TABLE_ID = "1777295414285";
+        const RECONSTRUCTED_HANDS = [
+            { id: "h01", dateStr: "06/11, 14:36", deltas: { "1777295396338": 1, "1777295400212": 0, "1777295391326": 1, "1777295402987": 1, "1777295380472": 0 } },
+            { id: "h02", dateStr: "06/11, 14:40", deltas: { "1777295396338": 0, "1777295400212": 1, "1777295391326": 0, "1777295402987": 1, "1777295380472": 0 } },
+            { id: "h03", dateStr: "10/11, 16:30", deltas: { "1777295396338": 0, "1777295400212": 1, "1777295391326": 1, "1777295402987": 0, "1777295380472": 0 } },
+            { id: "h04", dateStr: "10/11, 16:34", deltas: { "1777295396338": 0, "1777295400212": 0, "1777295391326": 0, "1777295402987": 1, "1777295380472": 1 } },
+            { id: "h05", dateStr: "10/11, 16:40", deltas: { "1777295396338": 0, "1777295400212": 1, "1777295391326": 1, "1777295402987": 0, "1777295380472": 2 } },
+            { id: "h06", dateStr: "11/11, 08:50", deltas: { "1777295396338": 0, "1777295400212": 1, "1777295391326": 0, "1777295402987": 0, "1777295380472": 1 } },
+            { id: "h07", dateStr: "11/11, 09:39", deltas: { "1777295396338": 1, "1777295400212": 1, "1777295391326": 0, "1777295402987": 0, "1777295380472": 1 } },
+            { id: "h08", dateStr: "11/11, 10:37", deltas: { "1777295396338": 0, "1777295400212": 0, "1777295391326": 1, "1777295402987": 1, "1777295380472": 0 } },
+            { id: "h09", dateStr: "11/11, 10:37", deltas: { "1777295396338": 1, "1777295400212": 1, "1777295391326": 1, "1777295402987": 0, "1777295380472": 0 } },
+            { id: "h10", dateStr: "11/11, 11:38", deltas: { "1777295396338": 0, "1777295400212": 1, "1777295391326": 1, "1777295402987": 0, "1777295380472": 0 } },
+            { id: "h11", dateStr: "11/11, 11:42", deltas: { "1777295396338": 1, "1777295400212": 0, "1777295391326": 0, "1777295402987": 1, "1777295380472": 0 } },
+            { id: "h12", dateStr: "12/11, 11:38", deltas: { "1777295396338": 0, "1777295400212": 1, "1777295391326": 1, "1777295402987": 0, "1777295380472": 0 } },
+            { id: "h13", dateStr: "12/11, 11:43", deltas: { "1777295396338": 1, "1777295400212": 0, "1777295391326": 1, "1777295402987": 0, "1777295380472": 1 } },
+            { id: "h14", dateStr: "13/11, 08:40", deltas: { "1777295396338": 1, "1777295400212": 0, "1777295391326": 0, "1777295402987": 1, "1777295380472": 1 } },
+            { id: "h15", dateStr: "13/11, 08:46", deltas: { "1777295396338": 0, "1777295400212": 1, "1777295391326": 0, "1777295402987": 0, "1777295380472": 1 } },
+            { id: "h16", dateStr: "13/11, 10:37", deltas: { "1777295396338": 1, "1777295400212": 0, "1777295391326": 0, "1777295402987": 1, "1777295380472": 0 } },
+            { id: "h17", dateStr: "13/11, 10:43", deltas: { "1777295396338": 1, "1777295400212": 1, "1777295391326": 0, "1777295402987": 0, "1777295380472": 0 } },
+            { id: "h18", dateStr: "13/11, 10:57", deltas: { "1777295396338": 1, "1777295400212": 0, "1777295391326": 1, "1777295402987": 0, "1777295380472": 1 } },
+            { id: "h19", dateStr: "13/11, 10:59", deltas: { "1777295396338": 1, "1777295400212": 0, "1777295391326": 1, "1777295402987": 0, "1777295380472": 0 } },
+            { id: "h20", dateStr: "13/11, 11:03", deltas: { "1777295396338": 0, "1777295400212": 0, "1777295391326": 1, "1777295402987": 1, "1777295380472": 0 } }
+        ];
+
+        // Classificazione mano secondo il regolamento Briscola a 5
+        function classifyHand(deltasObj) {
+            const entries = Object.entries(deltasObj || {}).filter(([, val]) => val !== 0);
+            const pos = entries.filter(([, val]) => val > 0);
+            const neg = entries.filter(([, val]) => val < 0);
+            const plus2 = entries.filter(([, val]) => val === 2);
+            const plus1 = entries.filter(([, val]) => val === 1);
+            const minus1 = entries.filter(([, val]) => val === -1);
+
+            // 120 realizzato: 1 chiamante (+2) e 2 soci (+1)
+            if (plus2.length === 1 && plus1.length === 2 && neg.length === 0) {
+                return { side: 'attacco', label: 'Attacco (120)', is120: true, winners: pos.map(([id]) => id) };
+            }
+            // 120 fallito: 2 difensori (+1) e 1 chiamante (-1)
+            if (plus1.length === 2 && minus1.length === 1 && pos.length === 2 && neg.length === 1) {
+                return { side: 'difesa', label: 'Difesa (120 fallito)', is120: true, winners: plus1.map(([id]) => id) };
+            }
+            // Attacco standard: 2 giocatori positivi (Chiamante + Socio)
+            if (pos.length === 2 && neg.length === 0) {
+                return { side: 'attacco', label: 'Attacco', is120: false, winners: pos.map(([id]) => id) };
+            }
+            // Difesa standard: 3 giocatori positivi (Difensori)
+            if (pos.length === 3 && neg.length === 0) {
+                return { side: 'difesa', label: 'Difesa', is120: false, winners: pos.map(([id]) => id) };
+            }
+            // Caso personalizzato/extra
+            return { side: 'altro', label: 'Mano Speciale', is120: false, winners: pos.map(([id]) => id) };
+        }
+
         function App() {
-            const [view, setView] = useState('home');
+            const [view, setView] = useState('home'); // 'home' | 'players' | 'new-table' | 'detail' | 'stats'
             const [user, setUser] = useState(null);
             const [isConnected, setIsConnected] = useState(false);
             const [players, setPlayers] = useState([]);
@@ -129,7 +212,13 @@
             const [newPlayerName, setNewPlayerName] = useState('');
             const [newTableName, setNewTableName] = useState('');
             const [selectedPlayers, setSelectedPlayers] = useState([]);
+            
+            // Punti temporanei della mano corrente nel tavolo: { [playerId]: -1 | 0 | 1 | 2 }
+            const [handDeltas, setHandDeltas] = useState({});
+            // Stato doppia conferma per Annulla Ultima Mano: 0 = chiuso, 1 = primo step, 2 = conferma definitiva
+            const [undoStep, setUndoStep] = useState(0);
 
+            const migratedRef = useRef(false);
             const baseP = ['artifacts', window.appId, 'public', 'data'];
 
             useEffect(() => {
@@ -147,12 +236,31 @@
                 }, () => setIsConnected(false));
 
                 const unsubT = window.fb.onSnapshot(window.fb.collection(window.db, ...baseP, 'tables'), (s) => {
-                    setTables(s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.ts - b.ts));
+                    const loadedTables = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.ts - b.ts);
+                    setTables(loadedTables);
+
+                    // Migrazione automatica una-tantum delle 20 mani ricostruite per il tavolo esistente
+                    if (!migratedRef.current) {
+                        const target = loadedTables.find(t => t.id === LEGACY_TABLE_ID);
+                        if (target && !target.handsMigrated && !target.hands) {
+                            migratedRef.current = true;
+                            window.fb.setDoc(window.fb.doc(window.db, ...baseP, 'tables', LEGACY_TABLE_ID), {
+                                ...target,
+                                hands: RECONSTRUCTED_HANDS,
+                                handsMigrated: true,
+                                logs: []
+                            });
+                        }
+                    }
                 });
                 return () => { unsubP(); unsubT(); };
             }, [user]);
 
-            const calculateWins = (pid) => tables.reduce((acc, t) => acc + (t.players.find(p => p.id === pid)?.score || 0), 0);
+            // Azzera i selettori temporanei quando si cambia tavolo
+            useEffect(() => {
+                setHandDeltas({});
+                setUndoStep(0);
+            }, [activeTableId]);
 
             const addPlayer = async () => {
                 if (!newPlayerName.trim()) return;
@@ -164,14 +272,18 @@
             };
 
             const createTable = async () => {
-                if (selectedPlayers.length !== 5 || !newTableName) return;
+                if (selectedPlayers.length !== 5 || !newTableName.trim()) return;
                 const id = Date.now().toString();
                 await window.fb.setDoc(window.fb.doc(window.db, ...baseP, 'tables', id), {
-                    name: newTableName, ts: Date.now(),
+                    name: newTableName.trim(),
+                    ts: Date.now(),
                     players: selectedPlayers.map(p => ({ id: p.id, name: p.name, score: 0 })),
-                    logs: []
+                    hands: [],
+                    handsMigrated: true
                 });
-                setSelectedPlayers([]); setNewTableName(''); setView('home');
+                setSelectedPlayers([]);
+                setNewTableName('');
+                setView('home');
             };
 
             const renameTable = async (tid, currentName) => {
@@ -184,207 +296,698 @@
                 });
             };
 
-            const updateScore = async (tid, pid, delta) => {
+            // Modifica il selettore temporaneo della mano (-1 <= val <= +2)
+            const changeHandDelta = (pid, step) => {
+                setHandDeltas(prev => {
+                    const current = prev[pid] || 0;
+                    const next = Math.max(-1, Math.min(2, current + step));
+                    return { ...prev, [pid]: next };
+                });
+            };
+
+            // Salva l'intera mano nel database
+            const saveHand = async (tid) => {
                 const t = tables.find(x => x.id === tid);
-                const player = t.players.find(p => p.id === pid);
-                if (delta < 0 && player.score === 0) return;
+                if (!t) return;
 
-                const newP = t.players.map(p => p.id === pid ? { ...p, score: Math.max(0, p.score + delta) } : p);
-                
+                const cleanDeltas = {};
+                let hasChanges = false;
+                t.players.forEach(p => {
+                    const d = handDeltas[p.id] || 0;
+                    cleanDeltas[p.id] = d;
+                    if (d !== 0) hasChanges = true;
+                });
+
+                if (!hasChanges) return;
+
+                // Aggiorna i punteggi totali (consente anche punteggi negativi es. -1)
+                const updatedPlayers = t.players.map(p => ({
+                    ...p,
+                    score: p.score + (cleanDeltas[p.id] || 0)
+                }));
+
                 const nowStr = new Date().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-                const logEntry = `${delta > 0 ? '+' : ''}${delta} (${player.name}) ${nowStr}`;
-                const currentLogs = t.logs || [];
-                const newLogs = [logEntry, ...currentLogs].slice(0, 50);
+                const newHand = {
+                    id: Date.now().toString(),
+                    dateStr: nowStr,
+                    deltas: cleanDeltas
+                };
 
-                await window.fb.setDoc(window.fb.doc(window.db, ...baseP, 'tables', tid), { ...t, players: newP, logs: newLogs });
+                const updatedHands = [...(t.hands || []), newHand];
+
+                await window.fb.setDoc(window.fb.doc(window.db, ...baseP, 'tables', tid), {
+                    ...t,
+                    players: updatedPlayers,
+                    hands: updatedHands,
+                    handsMigrated: true
+                });
+
+                setHandDeltas({});
+            };
+
+            // Annulla fisicamente l'ultima mano salvata
+            const confirmUndoLastHand = async (tid) => {
+                const t = tables.find(x => x.id === tid);
+                if (!t || !t.hands || t.hands.length === 0) return;
+
+                const lastHand = t.hands[t.hands.length - 1];
+                const restoredPlayers = t.players.map(p => ({
+                    ...p,
+                    score: p.score - (lastHand.deltas[p.id] || 0)
+                }));
+                const remainingHands = t.hands.slice(0, -1);
+
+                await window.fb.setDoc(window.fb.doc(window.db, ...baseP, 'tables', tid), {
+                    ...t,
+                    players: restoredPlayers,
+                    hands: remainingHands,
+                    handsMigrated: true
+                });
+
+                setUndoStep(0);
             };
 
             const endChampionship = async (tid) => {
                 const t = tables.find(x => x.id === tid);
                 if (!t) return;
 
-                let maxScore = -1;
+                let maxScore = -Infinity;
                 t.players.forEach(p => { if (p.score > maxScore) maxScore = p.score; });
 
-                if (maxScore <= 0) {
-                    alert("Impossibile terminare: nessun giocatore ha fatto punti in questo campionato!");
+                if (maxScore <= 0 && (!t.hands || t.hands.length === 0)) {
+                    alert("Impossibile terminare: nessun punto o mano registrata in questo campionato!");
                     return;
                 }
 
-                if (!confirm("Vuoi terminare il campionato attuale? I punteggi odierni verranno azzerati e verrà assegnato +1 Punto Campionato ai vincitori.")) return;
+                if (!confirm("Vuoi terminare il campionato attuale? I punteggi e le statistiche del tavolo verranno azzerati e verrà assegnato +1 Punto Campionato ai vincitori.")) return;
 
                 const winners = t.players.filter(p => p.score === maxScore);
 
                 for (const w of winners) {
                     const pDoc = players.find(x => x.id === w.id);
-                    const currentCPoints = pDoc?.championshipPoints || 0;
-                    await window.fb.setDoc(window.fb.doc(window.db, ...baseP, 'players', w.id), {
-                        ...pDoc,
-                        championshipPoints: currentCPoints + 1
-                    });
+                    if (pDoc) {
+                        const currentCPoints = pDoc.championshipPoints || 0;
+                        await window.fb.setDoc(window.fb.doc(window.db, ...baseP, 'players', w.id), {
+                            ...pDoc,
+                            championshipPoints: currentCPoints + 1
+                        });
+                    }
                 }
 
                 const resetPlayers = t.players.map(p => ({ ...p, score: 0 }));
-                const nowStr = new Date().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-                const winnersNames = winners.map(w => w.name).join(', ');
-                const endLog = `🏆 Campionato Terminato! Vincitore: ${winnersNames} (${nowStr})`;
-                const newLogs = [endLog, ...(t.logs || [])].slice(0, 50);
 
                 await window.fb.setDoc(window.fb.doc(window.db, ...baseP, 'tables', tid), {
                     ...t,
                     players: resetPlayers,
-                    logs: newLogs
+                    hands: [],
+                    logs: [],
+                    handsMigrated: true
                 });
+
+                setHandDeltas({});
+            };
+
+            // Calcolo completo delle statistiche del tavolo attivo
+            const computeTableStats = (table) => {
+                const hands = table.hands || [];
+                const totalHands = hands.length;
+                let attackWins = 0;
+                let defenseWins = 0;
+                let attack120Wins = 0;
+                let defense120Wins = 0;
+
+                const playerStats = {};
+                table.players.forEach(p => {
+                    playerStats[p.id] = {
+                        id: p.id,
+                        name: p.name,
+                        score: p.score,
+                        wins: 0,
+                        attackWins: 0,
+                        defenseWins: 0,
+                        plus2Count: 0,
+                        minus1Count: 0,
+                        currentStreak: 0,
+                        bestStreak: 0
+                    };
+                });
+
+                const pairWins = {};
+
+                hands.forEach(hand => {
+                    const info = classifyHand(hand.deltas);
+                    if (info.side === 'attacco') {
+                        attackWins++;
+                        if (info.is120) attack120Wins++;
+                    } else if (info.side === 'difesa') {
+                        defenseWins++;
+                        if (info.is120) defense120Wins++;
+                    }
+
+                    // Affinità di coppia sulle vittorie standard in Attacco (2 vincitori)
+                    if (info.side === 'attacco' && info.winners.length === 2) {
+                        const sortedIds = [...info.winners].sort();
+                        const pairKey = sortedIds.join('_');
+                        if (!pairWins[pairKey]) {
+                            const p1 = table.players.find(x => x.id === sortedIds[0])?.name || 'Giocatore 1';
+                            const p2 = table.players.find(x => x.id === sortedIds[1])?.name || 'Giocatore 2';
+                            pairWins[pairKey] = { names: `${p1} & ${p2}`, count: 0 };
+                        }
+                        pairWins[pairKey].count++;
+                    }
+
+                    // Aggiorna contatori individuali e strisce consecutive
+                    table.players.forEach(p => {
+                        const d = hand.deltas[p.id] || 0;
+                        const st = playerStats[p.id];
+                        if (!st) return;
+
+                        if (d === 2) st.plus2Count++;
+                        if (d === -1) st.minus1Count++;
+
+                        const wonThisHand = info.winners.includes(p.id);
+                        if (wonThisHand) {
+                            st.wins++;
+                            if (info.side === 'attacco') st.attackWins++;
+                            if (info.side === 'difesa') st.defenseWins++;
+                            st.currentStreak++;
+                            if (st.currentStreak > st.bestStreak) {
+                                st.bestStreak = st.currentStreak;
+                            }
+                        } else {
+                            st.currentStreak = 0;
+                        }
+                    });
+                });
+
+                const sortedPlayers = Object.values(playerStats).sort((a, b) => b.wins - a.wins || b.score - a.score);
+                const standardAttackTotal = Object.values(pairWins).reduce((sum, item) => sum + item.count, 0);
+                const sortedPairs = Object.values(pairWins).sort((a, b) => b.count - a.count);
+
+                return {
+                    totalHands,
+                    attackWins,
+                    defenseWins,
+                    attack120Wins,
+                    defense120Wins,
+                    sortedPlayers,
+                    sortedPairs,
+                    standardAttackTotal
+                };
             };
 
             return (
-                <div className="max-w-md mx-auto min-h-screen pb-32 p-6 bg-slate-50">
-                    {!isConnected && (
-                        <div className="fixed top-0 left-0 right-0 bg-red-500 text-white text-[10px] font-bold py-1 text-center z-[100] animate-pulse uppercase tracking-widest">
-                            Connessione in corso...
-                        </div>
-                    )}
-
+                <div className="max-w-md mx-auto min-h-screen pb-12 p-5 bg-slate-50">
+                    {/* ==================== VIEW: HOME ==================== */}
                     {view === 'home' && (
                         <div className="space-y-6">
-                            <div className="flex justify-between items-center">
-                                <h1 className="text-3xl font-black text-slate-800">I Tavoli</h1>
-                                <button onClick={() => setView('new-table')} className="bg-indigo-600 text-white p-3 rounded-2xl shadow-xl active-tap"><Icon name="plus" /></button>
-                            </div>
-                            <div className="grid gap-4">
-                                {tables.map(t => (
-                                    <div key={t.id} onClick={() => { setActiveTableId(t.id); setView('detail'); }} className="card-white p-5 rounded-[2rem] border border-slate-200 shadow-sm active-tap">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <h3 className="font-bold text-xl">{t.name}</h3>
-                                            <Icon name="chevron-right" className="text-slate-300" />
-                                        </div>
-                                        <div className="flex flex-wrap gap-2">
-                                            {t.players.sort((a,b) => b.score - a.score).map(p => (
-                                                <span key={p.id} className="text-[10px] bg-slate-50 px-3 py-1.5 rounded-full font-black uppercase tracking-tight border border-slate-100">
-                                                    {p.name}: <span className="text-indigo-600">{p.score}</span>
-                                                </span>
-                                            ))}
-                                        </div>
+                            <div className="flex justify-between items-center pt-1">
+                                <div className="flex items-center gap-3">
+                                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Home</h1>
+                                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-black tracking-widest uppercase ${isConnected ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-600'}`}>
+                                        <span className={`w-2 h-2 rounded-xs ${isConnected ? 'bg-emerald-500 live-square' : 'bg-red-500 animate-pulse'}`}></span>
+                                        {isConnected ? 'LIVE' : 'OFF'}
                                     </div>
-                                ))}
-                                {tables.length === 0 && isConnected && <p className="text-center text-slate-400 py-20 italic">Nessun tavolo attivo.</p>}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => setView('players')} className="bg-white text-slate-700 border border-slate-200 px-3.5 py-2.5 rounded-2xl shadow-xs font-bold text-xs flex items-center gap-1.5 active-tap">
+                                        <Icon name="users" size={16} className="text-indigo-600" />
+                                        Anagrafica
+                                    </button>
+                                    <button onClick={() => setView('new-table')} className="bg-indigo-600 text-white p-2.5 rounded-2xl shadow-md active-tap" title="Nuovo Tavolo">
+                                        <Icon name="plus" size={20} />
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    )}
 
-                    {view === 'players' && (
-                        <div className="space-y-6">
-                            <h1 className="text-3xl font-black text-slate-800">Anagrafica</h1>
-                            <div className="flex gap-2 p-2 card-white rounded-2xl border border-slate-200">
-                                <input className="flex-1 px-3 outline-none bg-transparent" placeholder="Nuovo nome..." value={newPlayerName} onChange={e => setNewPlayerName(e.target.value)} />
-                                <button onClick={addPlayer} className="bg-indigo-600 text-white px-5 py-3 rounded-xl font-bold active-tap">OK</button>
-                            </div>
-                            <div className="space-y-3">
-                                {players.sort((a,b) => (b.championshipPoints || 0) - (a.championshipPoints || 0)).map((p, i) => (
-                                    <div key={p.id} className="card-white p-4 rounded-2xl border border-slate-100 flex justify-between items-center shadow-sm">
-                                        <div className="flex items-center gap-4">
-                                            <span className="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-full font-black text-xs">{i+1}</span>
-                                            <div>
-                                                <p className="font-bold text-lg">{p.name}</p>
-                                                <div className="flex flex-col gap-0.5 text-[10px] font-black uppercase tracking-wide">
-                                                    <span className="text-amber-600 flex items-center gap-1">🏆 Campionati vinti: {p.championshipPoints || 0}</span>
-                                                    <span className="text-slate-400">Punti totali nei tavoli: {calculateWins(p.id)}</span>
+                            <div className="grid gap-4">
+                                {tables.map(t => {
+                                    const handsCount = (t.hands || []).length;
+                                    return (
+                                        <div key={t.id} onClick={() => { setActiveTableId(t.id); setView('detail'); }} className="card-white p-5 rounded-3xl border border-slate-200/80 shadow-xs active-tap cursor-pointer transition-all hover:border-indigo-200">
+                                            <div className="flex justify-between items-center mb-3.5">
+                                                <div className="flex items-center gap-2.5">
+                                                    <h3 className="font-black text-xl text-slate-900">{t.name}</h3>
+                                                    <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">
+                                                        {handsCount} {handsCount === 1 ? 'mano' : 'mani'}
+                                                    </span>
                                                 </div>
+                                                <Icon name="chevron-right" className="text-slate-300" />
+                                            </div>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {[...t.players].sort((a,b) => b.score - a.score).map(p => (
+                                                    <span key={p.id} className="text-[11px] bg-slate-50 px-3 py-1.5 rounded-xl font-extrabold tracking-tight border border-slate-100 text-slate-700">
+                                                        {p.name}: <span className={p.score < 0 ? 'text-rose-600' : 'text-indigo-600'}>{p.score}</span>
+                                                    </span>
+                                                ))}
                                             </div>
                                         </div>
-                                        <button onClick={() => window.fb.deleteDoc(window.fb.doc(window.db, ...baseP, 'players', p.id))} className="text-red-300 p-2 active-tap"><Icon name="trash-2" size={18}/></button>
+                                    );
+                                })}
+                                {tables.length === 0 && isConnected && (
+                                    <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
+                                        <p className="text-slate-400 font-medium text-sm">Nessun tavolo attivo.</p>
+                                        <button onClick={() => setView('new-table')} className="mt-3 text-indigo-600 font-black text-xs uppercase tracking-wider">+ Crea il primo tavolo</button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ==================== VIEW: ANAGRAFICA ==================== */}
+                    {view === 'players' && (
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-3 pt-1">
+                                <button onClick={() => setView('home')} className="p-2.5 bg-white rounded-2xl border border-slate-200 shadow-xs active-tap">
+                                    <Icon name="arrow-left" size={20} />
+                                </button>
+                                <h1 className="text-2xl font-black text-slate-900">Anagrafica</h1>
+                            </div>
+
+                            <div className="flex gap-2 p-2 card-white rounded-2xl border border-slate-200 shadow-xs">
+                                <input className="flex-1 px-3 outline-none bg-transparent font-medium text-sm" placeholder="Nuovo giocatore..." value={newPlayerName} onChange={e => setNewPlayerName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addPlayer()} />
+                                <button onClick={addPlayer} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider active-tap">Aggiungi</button>
+                            </div>
+
+                            <div className="space-y-2.5">
+                                {[...players].sort((a,b) => (b.championshipPoints || 0) - (a.championshipPoints || 0)).map((p, i) => (
+                                    <div key={p.id} className="card-white p-4 rounded-2xl border border-slate-100 flex justify-between items-center shadow-xs">
+                                        <div className="flex items-center gap-3.5">
+                                            <span className={`w-8 h-8 flex items-center justify-center rounded-xl font-black text-xs ${i === 0 && (p.championshipPoints || 0) > 0 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
+                                                {i + 1}
+                                            </span>
+                                            <div>
+                                                <p className="font-black text-lg text-slate-900 leading-tight">{p.name}</p>
+                                                <span className="text-amber-600 text-[11px] font-extrabold uppercase tracking-wide flex items-center gap-1 mt-0.5">
+                                                    🏆 Campionati vinti: {p.championshipPoints || 0}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => { if(confirm(`Eliminare ${p.name} dall'anagrafica?`)) window.fb.deleteDoc(window.fb.doc(window.db, ...baseP, 'players', p.id)); }} className="text-slate-300 hover:text-rose-500 p-2 active-tap">
+                                            <Icon name="trash-2" size={18}/>
+                                        </button>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     )}
 
+                    {/* ==================== VIEW: NUOVO TAVOLO ==================== */}
                     {view === 'new-table' && (
                         <div className="space-y-6">
-                            <div className="flex items-center gap-4">
-                                <button onClick={() => setView('home')} className="p-2 bg-white rounded-xl border"><Icon name="arrow-left" /></button>
-                                <h1 className="text-2xl font-black">Nuova Partita</h1>
+                            <div className="flex items-center gap-3 pt-1">
+                                <button onClick={() => setView('home')} className="p-2.5 bg-white rounded-2xl border border-slate-200 shadow-xs active-tap">
+                                    <Icon name="arrow-left" size={20} />
+                                </button>
+                                <h1 className="text-2xl font-black text-slate-900">Nuovo Tavolo</h1>
                             </div>
-                            <input className="w-full p-5 bg-white border border-slate-200 rounded-3xl outline-none shadow-sm" placeholder="Nome tavolo..." value={newTableName} onChange={e => setNewTableName(e.target.value)} />
-                            <div className="grid grid-cols-2 gap-2">
-                                {players.map(p => {
-                                    const isS = selectedPlayers.find(x => x.id === p.id);
-                                    return (
-                                        <button key={p.id} onClick={() => isS ? setSelectedPlayers(s => s.filter(x => x.id !== p.id)) : selectedPlayers.length < 5 && setSelectedPlayers(s => [...s, p])}
-                                            className={`p-4 rounded-2xl border-2 font-bold transition-all text-left ${isS ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-100 bg-white'}`}>
-                                            {p.name}
-                                        </button>
-                                    );
-                                })}
+
+                            <input className="w-full p-4 bg-white border border-slate-200 rounded-2xl outline-none shadow-xs font-bold" placeholder="Nome del tavolo..." value={newTableName} onChange={e => setNewTableName(e.target.value)} />
+                            
+                            <div>
+                                <p className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2.5">
+                                    Seleziona 5 giocatori ({selectedPlayers.length}/5)
+                                </p>
+                                <div className="grid grid-cols-2 gap-2.5">
+                                    {players.map(p => {
+                                        const isS = selectedPlayers.find(x => x.id === p.id);
+                                        return (
+                                            <button key={p.id} onClick={() => isS ? setSelectedPlayers(s => s.filter(x => x.id !== p.id)) : selectedPlayers.length < 5 && setSelectedPlayers(s => [...s, p])}
+                                                className={`p-3.5 rounded-2xl border-2 font-bold transition-all text-left flex justify-between items-center ${isS ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-100 bg-white text-slate-700'}`}>
+                                                <span>{p.name}</span>
+                                                {isS && <Icon name="check" size={16} className="text-indigo-600" />}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                            <button disabled={selectedPlayers.length !== 5 || !newTableName} onClick={createTable} className="w-full bg-emerald-500 text-white py-5 rounded-[2rem] font-black text-xl active-tap disabled:opacity-20 mt-4">INIZIA</button>
+
+                            <button disabled={selectedPlayers.length !== 5 || !newTableName.trim()} onClick={createTable} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-base uppercase tracking-wider shadow-md active-tap disabled:opacity-30">
+                                Crea Tavolo
+                            </button>
                         </div>
                     )}
 
+                    {/* ==================== VIEW: DETTAGLIO TAVOLO ==================== */}
                     {view === 'detail' && activeTableId && (() => {
                         const currentTable = tables.find(x => x.id === activeTableId);
                         if (!currentTable) return null;
+
+                        const hasPendingChanges = currentTable.players.some(p => (handDeltas[p.id] || 0) !== 0);
+                        const pendingInfo = hasPendingChanges ? classifyHand(handDeltas) : null;
+                        const handsList = currentTable.hands || [];
+                        const lastHand = handsList.length > 0 ? handsList[handsList.length - 1] : null;
+
                         return (
-                            <div className="space-y-6">
-                                 <div className="flex justify-between items-center">
-                                    <button onClick={() => setView('home')} className="p-3 bg-white rounded-2xl border active-tap"><Icon name="arrow-left" /></button>
-                                    <div className="flex items-center gap-2">
-                                        <h1 className="font-black text-xl">{currentTable.name}</h1>
-                                        <button onClick={() => renameTable(activeTableId, currentTable.name)} className="text-indigo-600 p-1 active-tap"><Icon name="edit-2" size={16} /></button>
+                            <div className="space-y-4">
+                                {/* Header Tavolo */}
+                                <div className="flex justify-between items-center pt-1">
+                                    <button onClick={() => setView('home')} className="p-2.5 bg-white rounded-2xl border border-slate-200 shadow-xs active-tap">
+                                        <Icon name="arrow-left" size={20} />
+                                    </button>
+                                    <div className="flex items-center gap-1.5">
+                                        <h1 className="font-black text-xl text-slate-900">{currentTable.name}</h1>
+                                        <button onClick={() => renameTable(activeTableId, currentTable.name)} className="text-indigo-600 p-1.5 active-tap">
+                                            <Icon name="edit-2" size={15} />
+                                        </button>
                                     </div>
-                                    <button onClick={() => { if(confirm("Chiudere il tavolo?")) { window.fb.deleteDoc(window.fb.doc(window.db, ...baseP, 'tables', activeTableId)); setView('home'); }}} className="text-red-400 p-2 active-tap"><Icon name="trash-2" /></button>
-                                </div>
-                                <div className="space-y-3">
-                                    {currentTable.players.map(p => (
-                                        <div key={p.id} className="card-white p-5 rounded-[2.5rem] border border-slate-100 flex justify-between items-center shadow-sm">
-                                            <div className="flex-1">
-                                                <p className="font-black text-2xl">{p.name}</p>
-                                            </div>
-                                            <div className="flex items-center gap-4 bg-slate-50 p-2 rounded-3xl border border-slate-100">
-                                                <button onClick={() => updateScore(activeTableId, p.id, -1)} className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center font-black text-2xl active-tap" disabled={p.score === 0}>-</button>
-                                                <span className="w-8 text-center text-3xl font-black text-indigo-600">{p.score}</span>
-                                                <button onClick={() => updateScore(activeTableId, p.id, 1)} className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center font-black text-2xl active-tap">+</button>
-                                            </div>
-                                        </div>
-                                    ))}
+                                    <button onClick={() => { if(confirm("Eliminare definitivamente questo tavolo?")) { window.fb.deleteDoc(window.fb.doc(window.db, ...baseP, 'tables', activeTableId)); setView('home'); }}} className="p-2.5 bg-white rounded-2xl border border-slate-200 text-rose-400 active-tap">
+                                        <Icon name="trash-2" size={18} />
+                                    </button>
                                 </div>
 
-                                <button onClick={() => endChampionship(activeTableId)} className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white py-4 rounded-2xl font-black shadow-lg active-tap flex items-center justify-center gap-2 mt-4 text-sm uppercase tracking-wider">
-                                    <Icon name="trophy" size={18}/> Termina Campionato
+                                {/* Barra Azioni: Salva Mano (grande) + Annulla Ultima Mano (freccia a U stessa altezza) */}
+                                <div className="flex items-stretch gap-2.5">
+                                    <button 
+                                        onClick={() => saveHand(activeTableId)}
+                                        disabled={!hasPendingChanges}
+                                        className={`flex-1 py-3.5 px-4 rounded-2xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all active-tap ${
+                                            hasPendingChanges 
+                                            ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' 
+                                            : 'bg-slate-200/70 text-slate-400 cursor-not-allowed'
+                                        }`}
+                                    >
+                                        <Icon name="check" size={19} />
+                                        <span>
+                                            {hasPendingChanges ? `Salva Mano • ${pendingInfo.label}` : 'Salva Mano'}
+                                        </span>
+                                    </button>
+
+                                    <button 
+                                        onClick={() => lastHand && setUndoStep(1)}
+                                        disabled={!lastHand}
+                                        title="Annulla ultima mano salvata"
+                                        className={`w-14 rounded-2xl border flex items-center justify-center transition-all active-tap ${
+                                            lastHand 
+                                            ? 'bg-white border-slate-200 text-slate-700 shadow-xs hover:border-rose-300 hover:text-rose-600' 
+                                            : 'bg-slate-100 border-slate-200/50 text-slate-300 cursor-not-allowed'
+                                        }`}
+                                    >
+                                        <Icon name="undo-2" size={20} />
+                                    </button>
+                                </div>
+
+                                {/* Schede Giocatori Compatte con Nomi e Punteggi Totali ben visibili */}
+                                <div className="space-y-2.5">
+                                    {currentTable.players.map(p => {
+                                        const delta = handDeltas[p.id] || 0;
+                                        let deltaStyle = 'bg-white text-slate-400 border-slate-200';
+                                        if (delta === 1) deltaStyle = 'bg-emerald-100 text-emerald-700 border-emerald-300';
+                                        if (delta === 2) deltaStyle = 'bg-amber-100 text-amber-700 border-amber-300';
+                                        if (delta === -1) deltaStyle = 'bg-rose-100 text-rose-700 border-rose-300';
+
+                                        return (
+                                            <div key={p.id} className="card-white px-4 py-3 rounded-2xl border border-slate-200/80 flex justify-between items-center shadow-xs">
+                                                {/* Nome grande + Punteggio totale del tavolo grande */}
+                                                <div className="flex items-baseline gap-3 min-w-0 pr-2">
+                                                    <span className="font-black text-xl text-slate-900 truncate">{p.name}</span>
+                                                    <span className={`font-black text-2xl tabular-nums ${p.score < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>
+                                                        {p.score}
+                                                    </span>
+                                                </div>
+
+                                                {/* Selettore punti della mano corrente (-1 .. +2) */}
+                                                <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-200/70 shrink-0">
+                                                    <button 
+                                                        onClick={() => changeHandDelta(p.id, -1)} 
+                                                        disabled={delta <= -1}
+                                                        className="w-10 h-10 bg-white rounded-xl border border-slate-200/80 flex items-center justify-center font-black text-xl text-slate-700 shadow-2xs active-tap disabled:opacity-25"
+                                                    >
+                                                        -
+                                                    </button>
+                                                    <span className={`w-10 h-10 rounded-xl border flex items-center justify-center font-black text-lg tabular-nums transition-colors ${deltaStyle}`}>
+                                                        {delta > 0 ? `+${delta}` : delta}
+                                                    </span>
+                                                    <button 
+                                                        onClick={() => changeHandDelta(p.id, 1)} 
+                                                        disabled={delta >= 2}
+                                                        className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center font-black text-xl shadow-xs active-tap disabled:opacity-25"
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Pulsante Statistiche */}
+                                <button 
+                                    onClick={() => setView('stats')} 
+                                    className="w-full bg-white border border-indigo-200 text-indigo-700 py-3.5 px-4 rounded-2xl font-black text-xs uppercase tracking-wider shadow-xs active-tap flex items-center justify-between"
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <Icon name="bar-chart-2" size={18} className="text-indigo-600" />
+                                        Statistiche Campionato
+                                    </span>
+                                    <span className="bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-lg text-[10px]">
+                                        {handsList.length} mani →
+                                    </span>
                                 </button>
 
-                                <div className="mt-6 pt-4 border-t border-slate-200">
-                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1">
-                                        <Icon name="history" size={14}/> Cronologia Movimenti
+                                {/* Pulsante Termina Campionato */}
+                                <button 
+                                    onClick={() => endChampionship(activeTableId)} 
+                                    className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white py-3.5 rounded-2xl font-black shadow-sm active-tap flex items-center justify-center gap-2 text-xs uppercase tracking-wider"
+                                >
+                                    <Icon name="trophy" size={16}/> Termina Campionato
+                                </button>
+
+                                {/* Storico sintetico ultime mani */}
+                                <div className="pt-2">
+                                    <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                        <Icon name="history" size={13}/> Ultime Mani Registrate ({handsList.length})
                                     </h3>
-                                    <div className="bg-white rounded-2xl border border-slate-200 p-4 max-h-48 overflow-y-auto space-y-2 shadow-inner">
-                                        {currentTable.logs && currentTable.logs.length > 0 ? (
-                                            currentTable.logs.map((log, index) => (
-                                                <div key={index} className={`text-xs font-medium py-1 border-b border-slate-100 last:border-none ${log.startsWith('🏆') ? 'text-amber-600 font-bold bg-amber-50 p-2 rounded-lg' : 'text-slate-600'}`}>
-                                                    {log}
-                                                </div>
-                                            ))
+                                    <div className="bg-white rounded-2xl border border-slate-200/80 p-3 max-h-40 overflow-y-auto space-y-1.5">
+                                        {handsList.length > 0 ? (
+                                            [...handsList].reverse().map((hand, idx) => {
+                                                const info = classifyHand(hand.deltas);
+                                                const summary = currentTable.players
+                                                    .filter(p => (hand.deltas[p.id] || 0) !== 0)
+                                                    .map(p => {
+                                                        const v = hand.deltas[p.id];
+                                                        return `${p.name} ${v > 0 ? `+${v}` : v}`;
+                                                    })
+                                                    .join(', ');
+                                                return (
+                                                    <div key={hand.id || idx} className="text-xs py-1.5 px-2 rounded-xl bg-slate-50/70 flex justify-between items-center gap-2">
+                                                        <div className="truncate">
+                                                            <span className={`inline-block text-[9px] font-black uppercase px-1.5 py-0.5 rounded mr-1.5 ${
+                                                                info.side === 'attacco' ? 'bg-indigo-100 text-indigo-700' : 
+                                                                info.side === 'difesa' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700'
+                                                            }`}>
+                                                                {info.label}
+                                                            </span>
+                                                            <span className="font-bold text-slate-700">{summary}</span>
+                                                        </div>
+                                                        <span className="text-[10px] text-slate-400 font-semibold shrink-0">{hand.dateStr}</span>
+                                                    </div>
+                                                );
+                                            })
                                         ) : (
-                                            <p className="text-xs text-slate-400 italic text-center py-4">Nessun movimento registrato.</p>
+                                            <p className="text-xs text-slate-400 italic text-center py-3">Nessuna mano ancora salvata.</p>
                                         )}
                                     </div>
                                 </div>
+
+                                {/* Modale Doppia Conferma Annullamento Ultima Mano */}
+                                {undoStep > 0 && lastHand && (
+                                    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-5" onClick={() => setUndoStep(0)}>
+                                        <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 space-y-4" onClick={e => e.stopPropagation()}>
+                                            <div className="flex items-center gap-2.5 text-rose-600">
+                                                <div className="p-2 bg-rose-50 rounded-xl">
+                                                    <Icon name="undo-2" size={22} />
+                                                </div>
+                                                <h3 className="font-black text-lg text-slate-900">
+                                                    {undoStep === 1 ? 'Annullare ultima mano?' : 'Conferma definitiva'}
+                                                </h3>
+                                            </div>
+
+                                            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 text-xs space-y-1">
+                                                <p className="text-slate-400 font-bold uppercase text-[10px]">Mano del {lastHand.dateStr}</p>
+                                                <p className="font-black text-slate-800 text-sm">
+                                                    {currentTable.players
+                                                        .filter(p => (lastHand.deltas[p.id] || 0) !== 0)
+                                                        .map(p => {
+                                                            const v = lastHand.deltas[p.id];
+                                                            return `${p.name} (${v > 0 ? `+${v}` : v})`;
+                                                        }).join(' • ')}
+                                                </p>
+                                            </div>
+
+                                            <p className="text-xs text-slate-500 leading-relaxed">
+                                                {undoStep === 1 
+                                                    ? 'I punti assegnati in questa mano verranno sottratti dal totale e la mano sarà rimossa dalle statistiche.' 
+                                                    : 'Sei sicuro al 100%? Questa operazione cancellerà definitivamente l’ultima registrazione.'}
+                                            </p>
+
+                                            <div className="flex gap-2 pt-1">
+                                                <button onClick={() => setUndoStep(0)} className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs uppercase tracking-wider active-tap">
+                                                    Chiudi
+                                                </button>
+                                                {undoStep === 1 ? (
+                                                    <button onClick={() => setUndoStep(2)} className="flex-1 py-3 rounded-xl bg-amber-500 text-white font-black text-xs uppercase tracking-wider active-tap">
+                                                        Procedi →
+                                                    </button>
+                                                ) : (
+                                                    <button onClick={() => confirmUndoLastHand(activeTableId)} className="flex-1 py-3 rounded-xl bg-rose-600 text-white font-black text-xs uppercase tracking-wider shadow-md active-tap">
+                                                        Annulla Mano
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         );
                     })()}
 
-                    <nav className="fixed bottom-6 left-6 right-6 bg-slate-900 text-white rounded-[2.5rem] px-10 py-5 flex justify-between items-center z-50 shadow-2xl">
-                        <button onClick={() => setView('home')} className={`flex flex-col items-center gap-1 ${view !== 'players' ? 'text-indigo-400' : 'text-slate-500'}`}>
-                            <Icon name="grid" size={24} />
-                        </button>
-                        <button onClick={() => setView('players')} className={`flex flex-col items-center gap-1 ${view === 'players' ? 'text-indigo-400' : 'text-slate-500'}`}>
-                            <Icon name="users" size={24} />
-                        </button>
-                        <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-red-500 animate-pulse'}`}></div>
-                            <span className="text-[8px] font-black">{isConnected ? "LIVE" : "OFF"}</span>
-                        </div>
-                    </nav>
+                    {/* ==================== VIEW: STATISTICHE TAVOLO ==================== */}
+                    {view === 'stats' && activeTableId && (() => {
+                        const currentTable = tables.find(x => x.id === activeTableId);
+                        if (!currentTable) return null;
+
+                        const stats = computeTableStats(currentTable);
+                        const classifiedTotal = stats.attackWins + stats.defenseWins;
+                        const attPct = classifiedTotal > 0 ? Math.round((stats.attackWins / classifiedTotal) * 100) : 0;
+                        const defPct = classifiedTotal > 0 ? 100 - attPct : 0;
+
+                        return (
+                            <div className="space-y-5">
+                                {/* Header Statistiche */}
+                                <div className="flex items-center justify-between pt-1">
+                                    <button onClick={() => setView('detail')} className="p-2.5 bg-white rounded-2xl border border-slate-200 shadow-xs active-tap">
+                                        <Icon name="arrow-left" size={20} />
+                                    </button>
+                                    <div className="text-center">
+                                        <h1 className="font-black text-xl text-slate-900">Statistiche</h1>
+                                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{currentTable.name} • {stats.totalHands} mani</p>
+                                    </div>
+                                    <div className="w-10"></div>
+                                </div>
+
+                                {stats.totalHands === 0 ? (
+                                    <div className="bg-white rounded-3xl p-10 text-center border border-slate-200/80">
+                                        <p className="text-slate-400 text-sm font-medium">Registra almeno una mano per visualizzare le statistiche del campionato.</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* Equilibrio Attacco vs Difesa */}
+                                        <div className="card-white p-4 rounded-3xl border border-slate-200/80 shadow-xs space-y-3">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs font-black uppercase tracking-wider text-slate-500">Equilibrio Tavolo</span>
+                                                <span className="text-[11px] font-bold text-slate-400">{stats.totalHands} mani totali</span>
+                                            </div>
+                                            
+                                            <div className="flex justify-between text-xs font-black">
+                                                <span className="text-indigo-600 flex items-center gap-1">
+                                                    <Icon name="swords" size={14} /> Attacco: {stats.attackWins} ({attPct}%)
+                                                </span>
+                                                <span className="text-emerald-600 flex items-center gap-1">
+                                                    Difesa: {stats.defenseWins} ({defPct}%) <Icon name="shield" size={14} />
+                                                </span>
+                                            </div>
+
+                                            <div className="w-full h-3 bg-emerald-500 rounded-full overflow-hidden flex">
+                                                <div className="bg-indigo-600 h-full transition-all" style={{ width: `${attPct}%` }}></div>
+                                            </div>
+
+                                            {(stats.attack120Wins > 0 || stats.defense120Wins > 0) && (
+                                                <div className="flex justify-between text-[10px] font-bold text-slate-500 pt-1 border-t border-slate-100">
+                                                    <span>120 vinti: {stats.attack120Wins}</span>
+                                                    <span>120 falliti: {stats.defense120Wins}</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Rendimento Individuale */}
+                                        <div className="space-y-2.5">
+                                            <h2 className="text-xs font-black uppercase tracking-wider text-slate-400 px-1">Rendimento Giocatori</h2>
+                                            {stats.sortedPlayers.map((ps, idx) => {
+                                                const winRate = stats.totalHands > 0 ? Math.round((ps.wins / stats.totalHands) * 100) : 0;
+                                                return (
+                                                    <div key={ps.id} className="card-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-2.5">
+                                                        <div className="flex justify-between items-center">
+                                                            <div className="flex items-center gap-2.5">
+                                                                <span className={`w-6 h-6 rounded-lg text-[11px] font-black flex items-center justify-center ${idx === 0 ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                                                    {idx + 1}
+                                                                </span>
+                                                                <span className="font-black text-lg text-slate-900">{ps.name}</span>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <span className="font-black text-base text-indigo-600">{winRate}%</span>
+                                                                <span className="text-[10px] font-bold text-slate-400 ml-1">({ps.wins}/{stats.totalHands})</span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Dettagli: Attacco, Difesa, +2, -1, Striscia */}
+                                                        <div className="grid grid-cols-4 gap-1.5 pt-1 border-t border-slate-100 text-center">
+                                                            <div className="bg-indigo-50/70 rounded-xl py-1.5 px-1">
+                                                                <p className="text-[9px] font-black uppercase text-indigo-400">Attacco</p>
+                                                                <p className="font-black text-sm text-indigo-700">{ps.attackWins}</p>
+                                                            </div>
+                                                            <div className="bg-emerald-50/70 rounded-xl py-1.5 px-1">
+                                                                <p className="text-[9px] font-black uppercase text-emerald-500">Difesa</p>
+                                                                <p className="font-black text-sm text-emerald-700">{ps.defenseWins}</p>
+                                                            </div>
+                                                            <div className="bg-amber-50/80 rounded-xl py-1.5 px-1">
+                                                                <p className="text-[9px] font-black uppercase text-amber-500">+2 / -1</p>
+                                                                <p className="font-black text-sm text-slate-800">
+                                                                    <span className="text-amber-600">{ps.plus2Count}</span>
+                                                                    <span className="text-slate-300 mx-0.5">/</span>
+                                                                    <span className="text-rose-600">{ps.minus1Count}</span>
+                                                                </p>
+                                                            </div>
+                                                            <div className="bg-slate-100/80 rounded-xl py-1.5 px-1">
+                                                                <p className="text-[9px] font-black uppercase text-slate-400">Striscia</p>
+                                                                <p className="font-black text-sm text-slate-800 flex items-center justify-center gap-0.5">
+                                                                    <Icon name="flame" size={12} className="text-orange-500" />
+                                                                    {ps.bestStreak}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Affinità di Coppia */}
+                                        <div className="card-white p-4 rounded-3xl border border-slate-200/80 shadow-xs space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <h2 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                                                    <Icon name="heart" size={14} className="text-rose-500" />
+                                                    Affinità di Coppia (Attacco)
+                                                </h2>
+                                                <span className="text-[10px] font-bold text-slate-400">{stats.standardAttackTotal} vittorie a 2</span>
+                                            </div>
+
+                                            {stats.sortedPairs.length > 0 ? (
+                                                <div className="space-y-2">
+                                                    {stats.sortedPairs.map((pair, idx) => {
+                                                        const pct = stats.standardAttackTotal > 0 ? Math.round((pair.count / stats.standardAttackTotal) * 100) : 0;
+                                                        return (
+                                                            <div key={pair.names} className={`flex items-center justify-between p-2.5 rounded-2xl ${idx === 0 ? 'bg-amber-50/80 border border-amber-200/70' : 'bg-slate-50'}`}>
+                                                                <div className="flex items-center gap-2">
+                                                                    {idx === 0 && <span className="text-xs">👑</span>}
+                                                                    <span className="font-black text-sm text-slate-800">{pair.names}</span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className="font-black text-xs text-indigo-600">{pair.count} {pair.count === 1 ? 'vittoria' : 'vittorie'}</span>
+                                                                    <span className="text-[10px] font-bold text-slate-400 ml-1.5">({pct}%)</span>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            ) : (
+                                                <p className="text-xs text-slate-400 italic text-center py-2">Nessuna vittoria in coppia registrata.</p>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        );
+                    })()}
                 </div>
             );
         }
