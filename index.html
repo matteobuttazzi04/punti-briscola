@@ -305,7 +305,7 @@
                 });
             };
 
-            // Salva l'intera mano nel database
+            // Salva l'intera mano nel database e riorganizza i giocatori in ordine di punteggio
             const saveHand = async (tid) => {
                 const t = tables.find(x => x.id === tid);
                 if (!t) return;
@@ -320,11 +320,13 @@
 
                 if (!hasChanges) return;
 
-                // Aggiorna i punteggi totali (consente anche punteggi negativi es. -1)
-                const updatedPlayers = t.players.map(p => ({
-                    ...p,
-                    score: p.score + (cleanDeltas[p.id] || 0)
-                }));
+                // Aggiorna i punteggi totali (consente anche punteggi negativi es. -1) e ordina per punteggio decrescente
+                const updatedPlayers = t.players
+                    .map(p => ({
+                        ...p,
+                        score: p.score + (cleanDeltas[p.id] || 0)
+                    }))
+                    .sort((a, b) => b.score - a.score);
 
                 const nowStr = new Date().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
                 const newHand = {
@@ -345,16 +347,18 @@
                 setHandDeltas({});
             };
 
-            // Annulla fisicamente l'ultima mano salvata
+            // Annulla fisicamente l'ultima mano salvata e riorganizza per punteggio
             const confirmUndoLastHand = async (tid) => {
                 const t = tables.find(x => x.id === tid);
                 if (!t || !t.hands || t.hands.length === 0) return;
 
                 const lastHand = t.hands[t.hands.length - 1];
-                const restoredPlayers = t.players.map(p => ({
-                    ...p,
-                    score: p.score - (lastHand.deltas[p.id] || 0)
-                }));
+                const restoredPlayers = t.players
+                    .map(p => ({
+                        ...p,
+                        score: p.score - (lastHand.deltas[p.id] || 0)
+                    }))
+                    .sort((a, b) => b.score - a.score);
                 const remainingHands = t.hands.slice(0, -1);
 
                 await window.fb.setDoc(window.fb.doc(window.db, ...baseP, 'tables', tid), {
@@ -637,6 +641,7 @@
                         const pendingInfo = hasPendingChanges ? classifyHand(handDeltas) : null;
                         const handsList = currentTable.hands || [];
                         const lastHand = handsList.length > 0 ? handsList[handsList.length - 1] : null;
+                        const sortedPlayersList = [...currentTable.players].sort((a, b) => b.score - a.score);
 
                         return (
                             <div className="space-y-4">
@@ -687,9 +692,9 @@
                                     </button>
                                 </div>
 
-                                {/* Schede Giocatori Compatte con Nomi e Punteggi Totali ben visibili */}
+                                {/* Schede Giocatori Compatte ordinate per punteggio con Nomi e Punteggi Totali ben visibili */}
                                 <div className="space-y-2.5">
-                                    {currentTable.players.map(p => {
+                                    {sortedPlayersList.map(p => {
                                         const delta = handDeltas[p.id] || 0;
                                         let deltaStyle = 'bg-white text-slate-400 border-slate-200';
                                         if (delta === 1) deltaStyle = 'bg-emerald-100 text-emerald-700 border-emerald-300';
@@ -697,7 +702,7 @@
                                         if (delta === -1) deltaStyle = 'bg-rose-100 text-rose-700 border-rose-300';
 
                                         return (
-                                            <div key={p.id} className="card-white px-4 py-3 rounded-2xl border border-slate-200/80 flex justify-between items-center shadow-xs">
+                                            <div key={p.id} className="card-white px-4 py-3 rounded-2xl border border-slate-200/80 flex justify-between items-center shadow-xs transition-all">
                                                 {/* Nome grande + Punteggio totale del tavolo grande */}
                                                 <div className="flex items-baseline gap-3 min-w-0 pr-2">
                                                     <span className="font-black text-xl text-slate-900 truncate">{p.name}</span>
@@ -762,7 +767,7 @@
                                         {handsList.length > 0 ? (
                                             [...handsList].reverse().map((hand, idx) => {
                                                 const info = classifyHand(hand.deltas);
-                                                const summary = currentTable.players
+                                                const summary = sortedPlayersList
                                                     .filter(p => (hand.deltas[p.id] || 0) !== 0)
                                                     .map(p => {
                                                         const v = hand.deltas[p.id];
@@ -806,7 +811,7 @@
                                             <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 text-xs space-y-1">
                                                 <p className="text-slate-400 font-bold uppercase text-[10px]">Mano del {lastHand.dateStr}</p>
                                                 <p className="font-black text-slate-800 text-sm">
-                                                    {currentTable.players
+                                                    {sortedPlayersList
                                                         .filter(p => (lastHand.deltas[p.id] || 0) !== 0)
                                                         .map(p => {
                                                             const v = lastHand.deltas[p.id];
